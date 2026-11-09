@@ -68,4 +68,8 @@ Os 16 cenários ficam em `src/test/resources/features/advantage-shopping.feature
 
 No VS Code, use a extensão **Test Runner for Java** e execute `RunCucumberTest` no painel Testes. O projeto alinha o JUnit Platform à versão usada pelo runner do VS Code. Se o painel ainda mostrar uma falha de descoberta, atualize a extensão **Extension Pack for Java** e a extensão **Test Runner for Java**; como alternativa, execute `mvn test` no terminal integrado.
 
+### GitHub Actions
+
+O workflow `.github/workflows/cucumber-tests.yml` executa todos os cenários em modo headless em pushes para `main`. Também pode ser iniciado manualmente pela aba **Actions** do GitHub, escolhendo **Cucumber scenarios** e clicando em **Run workflow**. Ele executa a suíte `RunCucumberTest`, que seleciona os cenários do recurso `features`.
+
 Os fluxos reproduzem os cenários Cypress de cadastro, autenticação, carrinho, pagamento e pedidos. Como usam um site público e criam contas/pedidos remotos, dependem da disponibilidade do site e da conexão de rede e podem alterar dados nesse serviço.
