@@ -21,9 +21,12 @@ import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
+import org.openqa.selenium.ElementClickInterceptedException;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.OutputType;
+import org.openqa.selenium.PageLoadStrategy;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -68,6 +71,8 @@ public class AdvantageShoppingSteps {
     }
 
     ChromeOptions options = new ChromeOptions();
+    options.setPageLoadStrategy(PageLoadStrategy.EAGER);
+    options.addArguments("--disable-dev-shm-usage");
     if (headless) {
       options.addArguments("--headless=new");
     }
@@ -848,7 +853,33 @@ public class AdvantageShoppingSteps {
   }
 
   private void click(By locator) {
-    clickElement(wait.until(ExpectedConditions.elementToBeClickable(locator)));
+    wait.until(webDriver -> {
+      if (!ExpectedConditions.invisibilityOfElementLocated(LOADER)
+          .apply(webDriver)) {
+        return false;
+      }
+
+      try {
+        WebElement element = webDriver.findElement(locator);
+        if (!element.isDisplayed() || !element.isEnabled()) {
+          return false;
+        }
+        ((JavascriptExecutor) webDriver).executeScript(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            element
+        );
+        if (!ExpectedConditions.invisibilityOfElementLocated(LOADER)
+            .apply(webDriver)) {
+          return false;
+        }
+        element.click();
+        return true;
+      } catch (ElementClickInterceptedException
+          | StaleElementReferenceException exception) {
+        return false;
+      }
+    });
+    waitForLoaderToDisappear();
   }
 
   private void clickFirstVisible(By locator) {
@@ -863,13 +894,28 @@ public class AdvantageShoppingSteps {
   }
 
   private void clickElement(WebElement element) {
-    waitForLoaderToDisappear();
-    ((JavascriptExecutor) driver).executeScript(
-        "arguments[0].scrollIntoView({block: 'center'});",
-        element
-    );
-    wait.until(ExpectedConditions.elementToBeClickable(element));
-    element.click();
+    wait.until(webDriver -> {
+      if (!ExpectedConditions.invisibilityOfElementLocated(LOADER)
+          .apply(webDriver)) {
+        return false;
+      }
+
+      try {
+        ((JavascriptExecutor) webDriver).executeScript(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            element
+        );
+        if (!element.isDisplayed() || !element.isEnabled()
+            || !ExpectedConditions.invisibilityOfElementLocated(LOADER)
+                .apply(webDriver)) {
+          return false;
+        }
+        element.click();
+        return true;
+      } catch (ElementClickInterceptedException exception) {
+        return false;
+      }
+    });
     waitForLoaderToDisappear();
   }
 
