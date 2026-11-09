@@ -12,9 +12,5 @@ import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
 @IncludeEngines("cucumber")
 @SelectClasspathResource("features")
 @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "br.com.cristhferr.selenium")
-@ConfigurationParameter(
-    key = FILTER_NAME_PROPERTY_NAME,
-    value = "Impedir adicionar ao carrinho quantidade igual a zero"
-)
 class RunCucumberTest {
 }
