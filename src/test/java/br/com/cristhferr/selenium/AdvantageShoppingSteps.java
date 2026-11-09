@@ -71,7 +71,7 @@ public class AdvantageShoppingSteps {
     }
 
     ChromeOptions options = new ChromeOptions();
-    options.setPageLoadStrategy(PageLoadStrategy.NONE);
+    options.setPageLoadStrategy(PageLoadStrategy.EAGER);
     options.addArguments("--disable-dev-shm-usage");
     if (headless) {
       options.addArguments("--headless=new");
