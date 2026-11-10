@@ -1,6 +1,10 @@
 # Selenium Java + Cucumber - Advantage Shopping
 
+[![Cucumber scenarios](https://github.com/cristhferr/advantage-shopping-selenium-java-cucumber/actions/workflows/cucumber-tests.yml/badge.svg?branch=main)](https://github.com/cristhferr/advantage-shopping-selenium-java-cucumber/actions/workflows/cucumber-tests.yml)
+
 Projeto de automação web com Selenium WebDriver, Java 17+, Maven, Cucumber JVM, JUnit Platform e Chrome. Os cenários são escritos em Gherkin nos arquivos `.feature`.
+
+[Repositório no GitHub](https://github.com/cristhferr/advantage-shopping-selenium-java-cucumber)
 
 ## Pré-requisitos
 
@@ -11,12 +15,13 @@ Projeto de automação web com Selenium WebDriver, Java 17+, Maven, Cucumber JVM
 
 O Selenium Manager resolve o ChromeDriver automaticamente na primeira execução.
 
+> **Atenção:** os cenários acessam uma loja pública e alguns criam contas, salvam cartões de teste ou enviam pedidos. Execute-os sabendo que esses dados podem ser gravados no serviço remoto.
+
 ## Executar os testes
 
-No terminal, entre nesta pasta e rode:
+Abra o terminal na raiz do projeto e execute:
 
 ```powershell
-cd selenium-java
 mvn test
 ```
 
@@ -64,12 +69,44 @@ mvn test -Dvideo=true -Dheadless=false "-Dvideo.windowTitle=Advantage Shopping" 
 
 Para não gravar, basta omitir `-Dvideo=true` (ou usar `-Dvideo=false`). A gravação não funciona em modo headless e a execução falha com uma mensagem explícita se for habilitada sem o FFmpeg.
 
-Os 16 cenários ficam em `src/test/resources/features/advantage-shopping.feature`; os passos Selenium e os hooks ficam em `src/test/java/br/com/cristhferr/selenium/AdvantageShoppingSteps.java`, e os seletores da interface ficam centralizados em `src/test/java/br/com/cristhferr/selenium/AdvantageShoppingLocators.java`.
+Os cenários ficam em `src/test/resources/features/advantage-shopping.feature`; use as tags `@cadastro`, `@autenticacao`, `@carrinho`, `@checkout`, `@pagamento`, `@conta`, `@compra` e `@validacao` para identificar os fluxos. Para executar, por exemplo, apenas os cenários de pagamento:
+
+```powershell
+mvn test "-Dcucumber.filter.tags=@pagamento"
+```
+
+Também é possível executar o filtro `@carrinho` pelo VS Code em **Terminal > Run Task... > Cucumber: @carrinho**. A tarefa do workspace está em `.vscode/tasks.json`.
+
+As definições Cucumber estão separadas por domínio em `CommonSteps`, `RegistrationSteps`, `AuthenticationSteps`, `CartSteps`, `PaymentSteps`, `SavedPaymentSteps` e `OrderSteps`. A lógica Selenium compartilhada fica em `AdvantageShoppingActions`, e o ciclo de vida do navegador fica em `ShoppingScenarioHooks`. O PicoContainer mantém essas classes ligadas ao mesmo contexto durante cada cenário; os seletores da interface continuam centralizados em `AdvantageShoppingLocators`.
 
 No VS Code, use a extensão **Test Runner for Java** e execute `RunCucumberTest` no painel Testes. O projeto alinha o JUnit Platform à versão usada pelo runner do VS Code. Se o painel ainda mostrar uma falha de descoberta, atualize a extensão **Extension Pack for Java** e a extensão **Test Runner for Java**; como alternativa, execute `mvn test` no terminal integrado.
 
 ### GitHub Actions
 
-O workflow `.github/workflows/cucumber-tests.yml` executa todos os cenários em modo headless em pushes para `main`. Também pode ser iniciado manualmente pela aba **Actions** do GitHub, escolhendo **Cucumber scenarios** e clicando em **Run workflow**. Ele executa a suíte `RunCucumberTest`, que seleciona os cenários do recurso `features`.
+O workflow `.github/workflows/cucumber-tests.yml` executa todos os cenários em modo headless em pushes e pull requests para `main`. Também pode ser iniciado manualmente pela aba **Actions** do GitHub, escolhendo **Cucumber scenarios** e clicando em **Run workflow**. Ele executa a suíte `RunCucumberTest`, que seleciona os cenários do recurso `features`, e publica relatórios e prints como artefato por sete dias, tanto em execuções aprovadas quanto em falhas. Os anexos de cenários com erro incluem URL, título e estado do documento para ajudar no diagnóstico. A gravação de vídeo continua desativada e não é suportada pelo workflow atual em Linux.
 
-Os fluxos reproduzem os cenários Cypress de cadastro, autenticação, carrinho, pagamento e pedidos. Como usam um site público e criam contas/pedidos remotos, dependem da disponibilidade do site e da conexão de rede e podem alterar dados nesse serviço.
+Os fluxos reproduzem cenários Cypress de cadastro, autenticação, carrinho, pagamento e pedidos. Como dependem de uma aplicação pública, os resultados também podem variar conforme a disponibilidade do site e da conexão de rede.
+
+## Git: fluxo básico
+
+Crie uma branch para cada alteração:
+
+```powershell
+git switch -c feature/nome-da-alteracao
+```
+
+Depois de editar, revise e registre as mudanças:
+
+```powershell
+git status
+git add .
+git commit -m "Descreve a alteração"
+```
+
+Envie a branch e seus commits ao GitHub:
+
+```powershell
+git push -u origin feature/nome-da-alteracao
+```
+
+O push envia somente commits; alterações ainda não commitadas permanecem locais. Abra um pull request da branch para `main` para que o workflow execute antes da integração.

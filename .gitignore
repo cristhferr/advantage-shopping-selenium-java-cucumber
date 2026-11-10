@@ -7,4 +7,5 @@ target/
 # IDEs
 .idea/
 *.iml
-.vscode/
+.vscode/*
+!.vscode/tasks.json

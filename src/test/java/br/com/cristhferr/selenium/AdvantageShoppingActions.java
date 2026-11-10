@@ -13,12 +13,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 import java.util.UUID;
 
-import io.cucumber.java.After;
-import io.cucumber.java.Before;
+import io.cucumber.java.PendingException;
 import io.cucumber.java.Scenario;
-import io.cucumber.java.en.Given;
-import io.cucumber.java.en.Then;
-import io.cucumber.java.en.When;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.ElementClickInterceptedException;
@@ -30,6 +26,7 @@ import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -40,7 +37,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import static br.com.cristhferr.selenium.AdvantageShoppingLocators.*;
 
-public class AdvantageShoppingSteps {
+public class AdvantageShoppingActions {
   private static final String DEFAULT_BASE_URL =
       "https://advantageonlineshopping.com/#/";
   private static final String SPEAKER_SHORT_NAME = "HP S9500";
@@ -53,12 +50,13 @@ public class AdvantageShoppingSteps {
   private Credentials credentials;
   private Payment savedPayment;
   private Payment updatedPayment;
+  private String attemptedExpiredYear;
   private int purchaseQuantity;
   private ScenarioVideoRecorder videoRecorder;
   private boolean videoStarted;
 
-  @Before
   public void setUp(Scenario scenario) {
+    attemptedExpiredYear = null;
     boolean recordVideo = Boolean.parseBoolean(
         System.getProperty("video", "false")
     );
@@ -87,9 +85,11 @@ public class AdvantageShoppingSteps {
     }
   }
 
-  @After
   public void tearDown(Scenario scenario) {
     RuntimeException teardownFailure = null;
+    if (driver != null && scenario.isFailed()) {
+      attachBrowserDiagnostics(scenario);
+    }
     if (driver != null
         && Boolean.parseBoolean(System.getProperty("screenshots", "true"))) {
       try {
@@ -128,7 +128,6 @@ public class AdvantageShoppingSteps {
     }
   }
 
-  @Given("que acesso a página inicial da loja")
   public void accessStoreHomePage() {
     navigateTo(baseUrl());
     wait.until(webDriver ->
@@ -137,7 +136,6 @@ public class AdvantageShoppingSteps {
     waitForLoaderToDisappear();
   }
 
-  @Given("preparo credenciais inéditas")
   public void prepareUniqueCredentials() {
     int seed = ThreadLocalRandom.current().nextInt(100_000, 1_000_000);
     String username = "sel" + seed;
@@ -148,7 +146,6 @@ public class AdvantageShoppingSteps {
     );
   }
 
-  @Given("que estou na página de pagamento autenticado")
   public void openAuthenticatedPaymentPage() {
     accessStoreHomePage();
     prepareUniqueCredentials();
@@ -158,29 +155,24 @@ public class AdvantageShoppingSteps {
     openPaymentForSpeaker();
   }
 
-  @When("crio uma conta com perfil completo e ofertas habilitadas")
   public void registerWithFullProfileAndOffers() {
     registerAccount(true, true, true);
   }
 
-  @When("preencho o cadastro com confirmação de senha incorreta")
   public void fillRegistrationWithMismatchedPassword() {
     openRegistrationForm();
     fillRegistrationForm(false, false, false, true);
   }
 
-  @When("preencho o cadastro sem aceitar os termos")
   public void fillRegistrationWithoutTerms() {
     openRegistrationForm();
     fillRegistrationForm(false, false, false, false);
   }
 
-  @When("crio uma conta com perfil completo")
   public void registerWithFullProfile() {
     registerAccount(true, false, true);
   }
 
-  @When("saio da conta")
   public void signOut() {
     click(USER_MENU);
     WebElement signOutButton = wait.until(
@@ -195,7 +187,6 @@ public class AdvantageShoppingSteps {
     );
   }
 
-  @When("entro com a conta criada")
   public void signIn() {
     openLoginForm();
     type(USERNAME_INPUT, credentials.username());
@@ -204,7 +195,6 @@ public class AdvantageShoppingSteps {
     waitForAuthenticatedUser();
   }
 
-  @When("tento entrar com credenciais que não foram cadastradas")
   public void attemptLoginWithUnknownCredentials() {
     click(USER_MENU);
     type(USERNAME_INPUT, credentials.username());
@@ -212,12 +202,10 @@ public class AdvantageShoppingSteps {
     click(SIGN_IN_BUTTON);
   }
 
-  @When("crio uma conta sem preencher o perfil")
   public void registerWithoutProfile() {
     registerAccount(false, false, true);
   }
 
-  @When("tento cadastrar novamente o mesmo username com outro email")
   public void attemptDuplicateUsernameRegistration() {
     openRegistrationForm();
     fillRegistrationForm(false, false, true, false);
@@ -228,62 +216,58 @@ public class AdvantageShoppingSteps {
     click(REGISTER_BUTTON);
   }
 
-  @When("adiciono duas unidades do alto-falante ao carrinho e inicio o checkout como visitante")
   public void addSpeakerAndStartGuestCheckout() {
     chooseSpeakerAndQuantity(2);
     hover(SHOPPING_CART_LINK);
     click(CHECKOUT_POPUP_BUTTON);
   }
 
-  @When("tento selecionar quantidade zero para o alto-falante")
   public void attemptZeroQuantity() {
     openSpeakerDetails();
     WebElement quantity = waitVisible(QUANTITY_INPUT);
     quantity.sendKeys(Keys.chord(Keys.CONTROL, "a"), "0", Keys.TAB);
   }
 
-  @When("preencho o pagamento com CVV incompleto")
   public void fillPaymentWithIncompleteCvv() {
     fillCardNumber(randomCardNumber());
     fillCvvAndExpiration("12", "2030");
     type(CARDHOLDER_INPUT, "Selenium Tester");
   }
 
-  @When("preencho o pagamento com número de cartão inválido")
   public void fillPaymentWithInvalidCard() {
     clearAndType(CARD_NUMBER_INPUT, "1234");
     fillCvvAndExpiration(randomCvv(), "2030");
     type(CARDHOLDER_INPUT, "Selenium Tester");
   }
 
-  @When("preencho o pagamento sem o nome do titular")
   public void fillPaymentWithoutCardholder() {
     fillCardNumber(randomCardNumber());
     fillCvvAndExpiration(randomCvv(), "2030");
   }
 
-  @When("preencho o pagamento sem o número do cartão")
   public void fillPaymentWithoutCardNumber() {
     fillCvvAndExpiration(randomCvv(), "2030");
     type(CARDHOLDER_INPUT, "Selenium Tester");
   }
 
-  @When("preencho o pagamento com validade do mês anterior")
   public void fillPaymentWithLastMonthExpiration() {
     java.time.LocalDate previousMonth = java.time.LocalDate.now().minusMonths(1);
-    String expiredYear = String.valueOf(previousMonth.getYear());
+    attemptedExpiredYear = String.valueOf(previousMonth.getYear());
     List<String> availableYears = optionValues(
         EXPIRATION_YEAR_OPTIONS,
         value -> value.matches("\\d{4}")
     );
 
-    if (!availableYears.contains(expiredYear)) {
-      return;
+    if (!availableYears.contains(attemptedExpiredYear)) {
+      throw new PendingException(
+          "O ano da validade vencida (" + attemptedExpiredYear
+              + ") não está disponível no seletor."
+      );
     }
 
     fillCardNumber(randomCardNumber());
     fillCvv(randomCvv());
-    select(EXPIRATION_YEAR_SELECT, expiredYear);
+    select(EXPIRATION_YEAR_SELECT, attemptedExpiredYear);
     select(
         EXPIRATION_MONTH_SELECT,
         String.format(Locale.ROOT, "%02d", previousMonth.getMonthValue())
@@ -291,7 +275,6 @@ public class AdvantageShoppingSteps {
     type(CARDHOLDER_INPUT, "Selenium Tester");
   }
 
-  @When("salvo um cartão na conta")
   public void saveCardToAccount() {
     credentials = uniqueCredentials();
     createAccount(true, false, true);
@@ -306,14 +289,12 @@ public class AdvantageShoppingSteps {
     saveMasterCredit(savedPayment);
   }
 
-  @When("saio e entro novamente na conta")
   public void signOutAndSignInAgain() {
     signOut();
     signIn();
     openMyAccount();
   }
 
-  @When("atualizo os dados do cartão salvo")
   public void updateSavedCard() {
     updatedPayment = new Payment(
         nextCardNumber(savedPayment.cardNumber()),
@@ -325,7 +306,6 @@ public class AdvantageShoppingSteps {
     saveMasterCredit(updatedPayment);
   }
 
-  @When("finalizo uma compra autenticada de três unidades")
   public void placeAuthenticatedOrder() {
     credentials = uniqueCredentials();
     createAccount(true, false, true);
@@ -362,19 +342,16 @@ public class AdvantageShoppingSteps {
     assertVisibleText("$780.00");
   }
 
-  @Then("a conta criada deve aparecer autenticada")
   public void createdAccountShouldBeAuthenticated() {
     waitForAuthenticatedUser();
   }
 
-  @Then("o botão de cadastro deve estar desabilitado")
   public void registrationButtonShouldBeDisabled() {
     wait.until(driver ->
         !driver.findElement(REGISTER_BUTTON).isEnabled()
     );
   }
 
-  @Then("o formulário de login deve continuar visível e a sessão permanecer encerrada")
   public void loginShouldRemainRejected() {
     wait.until(ExpectedConditions.visibilityOfElementLocated(
         SIGN_IN_BUTTON
@@ -385,12 +362,10 @@ public class AdvantageShoppingSteps {
     }
   }
 
-  @Then("a mensagem de username já existente deve aparecer")
   public void duplicateUsernameMessageShouldAppear() {
     assertVisibleText("User name already exists");
   }
 
-  @Then("o checkout deve solicitar os dados de login e manter os itens no carrinho")
   public void guestCheckoutShouldRequireLogin() {
     assertVisibleText("ORDER PAYMENT");
     waitVisible(ORDER_REGISTRATION_BUTTON);
@@ -399,7 +374,6 @@ public class AdvantageShoppingSteps {
     assertCartContains(2, "$400.00");
   }
 
-  @Then("a quantidade do produto deve permanecer em um")
   public void productQuantityShouldStayOne() {
     wait.until(driver ->
         driver.findElement(QUANTITY_INPUT)
@@ -407,7 +381,6 @@ public class AdvantageShoppingSteps {
     );
   }
 
-  @Then("o pagamento não deve poder ser enviado")
   public void paymentShouldBeDisabled() {
     wait.until(driver ->
         !driver.findElement(PAY_NOW_BUTTON)
@@ -415,7 +388,6 @@ public class AdvantageShoppingSteps {
     );
   }
 
-  @Then("o seletor de validade não deve oferecer anos anteriores ao atual")
   public void expirationYearsShouldNotBePast() {
     List<Integer> years = optionValues(
         EXPIRATION_YEAR_OPTIONS,
@@ -433,30 +405,27 @@ public class AdvantageShoppingSteps {
     }
   }
 
-  @Then("o pagamento não deve poder ser enviado quando o ano expirado estiver disponível")
   public void expiredPaymentShouldBeDisabledWhenYearExists() {
-    String expiredYear = String.valueOf(Year.now().getValue() - 1);
-    if (!optionValues(
+    if (attemptedExpiredYear == null || !optionValues(
         EXPIRATION_YEAR_OPTIONS,
         value -> value.matches("\\d{4}")
     )
-        .contains(expiredYear)) {
-      return;
+        .contains(attemptedExpiredYear)) {
+      throw new AssertionError(
+          "O cenário não selecionou uma validade vencida disponível."
+      );
     }
     paymentShouldBeDisabled();
   }
 
-  @Then("os dados do cartão salvo devem continuar disponíveis")
   public void savedCardShouldRemainAvailable() {
     assertSavedPayment(savedPayment);
   }
 
-  @Then("os dados atualizados do cartão devem continuar disponíveis")
   public void updatedCardShouldRemainAvailable() {
     assertSavedPayment(updatedPayment);
   }
 
-  @Then("a confirmação e o histórico devem exibir o pedido realizado")
   public void orderShouldAppearInHistory() {
     click(USER_MENU_ICON);
     click(MY_ORDERS_MENU_ITEM);
@@ -523,6 +492,22 @@ public class AdvantageShoppingSteps {
       );
     }
     scenario.attach(screenshot, "image/png", baseName);
+  }
+
+  private void attachBrowserDiagnostics(Scenario scenario) {
+    String diagnostics;
+    try {
+      diagnostics = "Scenario: " + scenario.getName()
+          + "\nURL: " + driver.getCurrentUrl()
+          + "\nTitle: " + driver.getTitle()
+          + "\nReady state: "
+          + ((JavascriptExecutor) driver).executeScript("return document.readyState");
+    } catch (WebDriverException exception) {
+      diagnostics = "Scenario: " + scenario.getName()
+          + "\nBrowser diagnostics unavailable: "
+          + exception.getClass().getSimpleName() + ": " + exception.getMessage();
+    }
+    scenario.attach(diagnostics, "text/plain", "browser-diagnostics");
   }
 
   private String safeFileName(String value) {

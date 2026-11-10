@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Cucumber: @carrinho",
+      "type": "shell",
+      "command": "mvn test \"-Dcucumber.filter.tags=@carrinho\"",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}
