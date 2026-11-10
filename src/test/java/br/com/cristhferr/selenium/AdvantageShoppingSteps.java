@@ -28,6 +28,7 @@ import org.openqa.selenium.OutputType;
 import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -461,14 +462,28 @@ public class AdvantageShoppingSteps {
     click(MY_ORDERS_MENU_ITEM);
     wait.until(ExpectedConditions.urlContains("/MyOrders"));
     assertVisibleText("MY ORDERS");
-    String orderHistory = driver.findElement(PAGE_BODY).getText();
-    if (orderHistory.contains("- No orders -")) {
+    String expectedQuantity = String.valueOf(purchaseQuantity);
+    String orderHistory;
+    try {
+      orderHistory = new WebDriverWait(driver, Duration.ofSeconds(10)).until(
+          webDriver -> {
+            String text = webDriver.findElement(PAGE_BODY).getText();
+            return text.contains(SPEAKER_SHORT_NAME)
+                    && text.contains(expectedQuantity)
+                ? text
+                : null;
+          }
+      );
+    } catch (TimeoutException exception) {
+      String currentHistory = driver.findElement(PAGE_BODY).getText();
       throw new AssertionError(
-          "A compra foi confirmada, mas a loja não registrou o pedido em My Orders."
+          "A compra foi confirmada, mas o produto e a quantidade esperados "
+              + "não apareceram em My Orders. Conteúdo atual: " + currentHistory,
+          exception
       );
     }
     assertContains(orderHistory, SPEAKER_SHORT_NAME);
-    assertContains(orderHistory, String.valueOf(purchaseQuantity));
+    assertContains(orderHistory, expectedQuantity);
   }
 
   private String baseUrl() {
@@ -829,13 +844,39 @@ public class AdvantageShoppingSteps {
   }
 
   private void type(By locator, String value) {
-    waitVisible(locator).sendKeys(value);
+    boolean[] retryAfterStaleElement = {false};
+    wait.until(webDriver -> {
+      try {
+        WebElement element = webDriver.findElement(locator);
+        if (!element.isDisplayed()) {
+          return false;
+        }
+        if (retryAfterStaleElement[0]) {
+          element.clear();
+        }
+        element.sendKeys(value);
+        return true;
+      } catch (StaleElementReferenceException exception) {
+        retryAfterStaleElement[0] = true;
+        return false;
+      }
+    });
   }
 
   private void clearAndType(By locator, String value) {
-    WebElement element = waitVisible(locator);
-    element.clear();
-    element.sendKeys(value);
+    wait.until(webDriver -> {
+      try {
+        WebElement element = webDriver.findElement(locator);
+        if (!element.isDisplayed()) {
+          return false;
+        }
+        element.clear();
+        element.sendKeys(value);
+        return true;
+      } catch (StaleElementReferenceException exception) {
+        return false;
+      }
+    });
   }
 
   private void setInputValue(By locator, String value) {

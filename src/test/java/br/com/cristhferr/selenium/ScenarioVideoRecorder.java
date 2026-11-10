@@ -28,7 +28,8 @@ final class ScenarioVideoRecorder {
     this.scenarioName = scenarioName;
     outputDirectory = Path.of(System.getProperty("video.dir", "target/videos"));
     ffmpegPath = System.getProperty("ffmpeg.path", "ffmpeg");
-    windowTitle = System.getProperty("video.windowTitle", "Advantage Shopping");
+    windowTitle = System.getProperty("video.windowTitle", "Advantage Shopping")
+        .trim();
   }
 
   void start() {
